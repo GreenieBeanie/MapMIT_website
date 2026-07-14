@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>MapMIT: Interactive Campus Map</title>
+  <meta name="description"
+    content="Explore Manipal Institute of Technology campus in an interactive 3D environment. Navigate buildings, roads, and spaces in real time.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MapMIT: Interactive Campus Map">
+  <meta property="og:description"
+    content="Explore MIT Manipal campus in an interactive 3D environment. Navigate buildings, roads, and spaces in your browser or on Android.">
+  <meta property="og:image" content="https://mapmit.in/img.jpg">
+  <meta property="og:site_name" content="MapMIT">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MapMIT: Interactive Campus Map">
+  <meta name="twitter:description" content="Navigate the MIT Manipal campus in 3D, right in your browser.">
+  <meta name="twitter:image" content="https://mapmit.in/img.jpg">
+
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #d1d5db;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    :root {
+      --border: #1a1a1a;
+      --border-hover: #2a2a2a;
+      --surface: #111111;
+      --muted: #666;
+      --label: #444;
+      --max-w: 1080px;
+      --px: 32px;
+      --section-gap: 80px;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 300;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--px);
+      background: rgba(10, 10, 10, 0.88);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-brand-sep {
+      width: 1px;
+      height: 14px;
+      background: #252525;
+    }
+
+    .nav-brand-sub {
+      font-size: 13px;
+      color: #444;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    /* Keyboard focus — visible outline for all interactive elements */
+    .btn:focus-visible,
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid #5599ff;
+      outline-offset: 2px;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #999;
+      border-color: #222;
+    }
+
+    .btn-ghost:hover {
+      background: #151515;
+      color: #e0e0e0;
+      border-color: #2a2a2a;
+    }
+
+    .btn-solid {
+      background: #fff;
+      color: #0a0a0a;
+      border-color: #fff;
+    }
+
+    .btn-solid:hover {
+      background: #f0f0f0;
+      border-color: #f0f0f0;
+      transform: translateY(-1px);
+    }
+
+    .btn-lg {
+      font-size: 14px;
+      padding: 10px 22px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-xl {
+      font-size: 15px;
+      padding: 12px 28px;
+      border-radius: var(--radius-sm);
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .section {
+      padding: var(--section-gap) var(--px);
+    }
+
+    .section-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.6px;
+      color: #f5f5f5;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 520px;
+    }
+
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 96px 24px 64px;
+    }
+
+    .hero-badge {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #444;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 5.5vw, 64px);
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1.08;
+      color: #f5f5f5;
+      margin-bottom: 18px;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: #777;
+      max-width: 420px;
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-scroll {
+      margin-top: 60px;
+      color: #2e2e2e;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: color 0.14s;
+      background: none;
+      border: none;
+      font-family: inherit;
+    }
+
+    .hero-scroll:hover {
+      color: #555;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 36px;
+    }
+
+    .feature {
+      padding: 32px 28px;
+      border-right: 1px solid var(--border);
+      transition: background 0.2s ease;
+    }
+
+    .feature:last-child {
+      border-right: none;
+    }
+
+    .feature:hover {
+      background: var(--surface);
+    }
+
+    .feature-num {
+      font-size: 11px;
+      font-weight: 500;
+      color: #2a2a2a;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    .feature h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #d0d0d0;
+      margin-bottom: 8px;
+      letter-spacing: -0.2px;
+    }
+
+    .feature p {
+      font-size: 13.5px;
+      color: #666;
+      line-height: 1.65;
+    }
+
+
+
+    .android-header {
+      margin-bottom: 32px;
+    }
+
+    /* Auto 2-col grid that collapses gracefully */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+      gap: 24px;
+    }
+
+    /* Card: full height so all cards align */
+    .preview-card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    /* Phone frame mockup — pure CSS, no images */
+    .phone-frame {
+      flex-shrink: 0;
+      background: #0d0d0d;
+      border: 1px solid #1f1f1f;
+      border-radius: 22px;
+      padding: 12px 10px 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .phone-frame:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Pill notch / Dynamic Island */
+    .phone-notch {
+      width: 52px;
+      height: 5px;
+      background: #1c1c1c;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* Screenshot inside the frame */
+    .phone-screen {
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-screen img {
+      width: 100%;
+      height: auto;
+      max-height: 320px;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Text below the frame */
+    .preview-caption {
+      padding: 14px 2px 0;
+      flex: 1;
+    }
+
+    .preview-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #d0d0d0;
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+    }
+
+    .preview-desc {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.55;
+    }
+
+    /* paragraph + CTA below gallery */
+    .android-footer {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .android-footer p {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.65;
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .install-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #0a0a0a;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .install-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .install-img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .install-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .install-img.icon {
+      padding: 20px;
+    }
+
+    .install-img.icon img {
+      width: auto;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    .install-body {
+      padding: 16px 18px 20px;
+    }
+
+    .install-step {
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 4px;
+    }
+
+    .install-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ccc;
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+    }
+
+    .install-card p {
+      font-size: 12.5px;
+      color: #555;
+      line-height: 1.55;
+    }
+
+    .download-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .download-box h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ddd;
+      letter-spacing: -0.3px;
+      margin-bottom: 3px;
+    }
+
+    .download-box p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .apk-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin-top: 6px;
+    }
+
+    .apk-meta span {
+      font-size: 11px;
+      color: #3a3a3a;
+      letter-spacing: 0.01em;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px var(--px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    footer span {
+      font-size: 12px;
+      color: #333;
+    }
+
+    .badge-coming-soon {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 400;
+      color: #3a3a3a;
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 8px;
+      padding: 10px 20px;
+      cursor: default;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+    }
+
+
+
+    .app-howto-block {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .app-howto-text {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .app-howto-desc {
+      font-size: 13px;
+      color: #4a4a4a;
+      line-height: 1.6;
+      max-width: 520px;
+    }
+
+    .app-howto-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .app-howto-label {
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #2e2e2e;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .app-howto-list {
+      list-style: decimal;
+      padding-left: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .app-howto-list li {
+      font-size: 12.5px;
+      color: #484848;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 1024px) {
+      .install-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --px: 16px;
+        --section-gap: 56px;
+      }
+
+      nav {
+        padding: 0 16px;
+      }
+
+      .nav-brand-sep,
+      .nav-brand-sub {
+        display: none;
+      }
+
+      .hero {
+        padding: 80px 20px 52px;
+      }
+
+      .hero h1 {
+        letter-spacing: -1.5px;
+      }
+
+      .hero-cta {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .feature:last-child {
+        border-bottom: none;
+      }
+
+
+
+      .preview-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .app-grid {
+        grid-template-columns: 1fr;
+        max-width: 320px;
+      }
+
+      .android-footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .app-howto-block {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .install-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .download-box {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .download-box .btn-xl {
+        width: 100%;
+        justify-content: center;
+      }
+
+      footer {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 {
+        letter-spacing: -1px;
+      }
+
+      .hero p {
+        font-size: 15px;
+        max-width: 300px;
+      }
+
+      .phone-screen img {
+        max-height: 260px;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+        max-width: 300px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav aria-label="Main navigation">
+    <a href="#" class="nav-brand" aria-label="MapMIT home">
+      <span class="nav-brand-name">MapMIT</span>
+      <span class="nav-brand-sep" aria-hidden="true"></span>
+      <span class="nav-brand-sub">by Varise</span>
+    </a>
+    <div class="nav-links">
+      <a href="#android-section" class="btn btn-solid" aria-label="Go to Android app section">Android App</a>
+    </div>
+  </nav>
+  <section class="hero">
+    <div class="hero-badge">Interactive Campus Map · MIT Manipal</div>
+    <h1>Navigate MIT<br>in 3D</h1>
+    <p>Every building, road, and shortcut on MIT Manipal's campus, right in your browser. Or grab the Android app and
+      carry it with you.</p>
+    <div class="hero-cta">
+      <a href="#download-section" class="btn btn-solid btn-xl" aria-label="Download Android App">Download Android
+        App</a>
+    </div>
+    <a href="#android-section" class="hero-scroll" aria-label="Scroll down to explore the app"
+      style="text-decoration: none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <polyline points="19 12 12 19 5 12" />
+      </svg>
+      Scroll to explore
+    </a>
+  </section>
+
+  <div class="rule"></div>
+  <section class="section">
+    <div class="section-inner">
+      <div class="eyebrow">Why MapMIT</div>
+      <div class="section-title">Built for campus navigation</div>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="feature-num">01</div>
+          <h3>True-to-life campus</h3>
+          <p>Every building and road placed exactly where it is in real life. No guesswork, just the actual campus.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-num">02</div>
+          <h3>Runs in the browser</h3>
+          <p>Just open the page and go. Works straight in your browser with nothing to install.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-num">03</div>
+          <h3>Android app</h3>
+          <p>Take it with you wherever you go. The full campus in your pocket.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+
+  <div class="rule"></div>
+  <section id="android-section" class="section">
+    <div class="section-inner">
+
+      <!-- Header -->
+      <div class="android-header">
+        <div class="eyebrow">Android</div>
+        <div class="section-title">Take MapMIT Anywhere</div>
+        <p class="section-desc">The Android app gives you the full campus map on your phone. Find your way, check out
+          buildings, explore the campus.</p>
+      </div>
+
+      <!-- 2×2 compact phone-frame preview grid -->
+      <div class="preview-grid">
+
+        <div class="preview-card">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <img src="b14.jpg" alt="Route Navigation" loading="lazy" width="400" height="320">
+            </div>
+          </div>
+          <div class="preview-caption">
+            <div class="preview-title">Route Navigation</div>
+            <div class="preview-desc">Get turn-by-turn navigation across the MIT Manipal campus.</div>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <img src="Library.jpg" alt="Building Information" loading="lazy" width="400" height="320">
+            </div>
+          </div>
+          <div class="preview-caption">
+            <div class="preview-title">Building Information</div>
+            <div class="preview-desc">View detailed information and images for every campus building.</div>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <img src="sp.jpg" alt="Interactive Campus Map" loading="lazy" width="400" height="320">
+            </div>
+          </div>
+          <div class="preview-caption">
+            <div class="preview-title">Interactive Campus Map</div>
+            <div class="preview-desc">Explore the campus with an intuitive 3D map.</div>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <img src="Splazza.jpg" alt="Student Plaza Navigation" loading="lazy" width="400" height="320">
+            </div>
+          </div>
+          <div class="preview-caption">
+            <div class="preview-title">Student Plaza Navigation</div>
+            <div class="preview-desc">Quickly locate important landmarks and student facilities.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- App how-to + CTA -->
+      <div class="app-howto-block">
+        <div class="app-howto-text">
+          <p class="app-howto-desc">MapMIT gives you a fully navigable, 3D virtual recreation of the MIT campus, so you
+            can explore the grounds right from your phone.</p>
+          <div class="app-howto-row">
+            <span class="app-howto-label">How to use</span>
+            <ol class="app-howto-list">
+              <li>Open the MapMIT app.</li>
+              <li>Allow the GPS permission.</li>
+              <li>Select your destination and tap the navigation button.</li>
+            </ol>
+          </div>
+        </div>
+        <a href="#download-section" class="btn btn-solid btn-lg">Get the App</a>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="section">
+    <div class="section-inner">
+      <div class="eyebrow">Installation</div>
+      <div class="section-title">Get the app in three steps</div>
+      <p class="section-desc">Just download the APK and install it directly on your Android phone.</p>
+      <div class="install-grid">
+
+        <div class="install-card">
+          <div class="install-img icon">
+            <img src="img.jpg" alt="MAPMIT app icon" loading="lazy" width="146" height="146">
+          </div>
+          <div class="install-body">
+            <div class="install-step">Step 01</div>
+            <h3>Download APK</h3>
+            <p>Tap the Download APK button below to save the installer to your device.</p>
+          </div>
+        </div>
+
+        <div class="install-card">
+          <div class="install-img">
+            <img src="install.jpg" alt="Android install dialog" loading="lazy" width="300" height="186">
+          </div>
+          <div class="install-body">
+            <div class="install-step">Step 02</div>
+            <h3>Tap Install</h3>
+            <p>Open the APK from your file manager or notification and tap Install.</p>
+          </div>
+        </div>
+
+        <div class="install-card">
+          <div class="install-img">
+            <img src="installing.jpg" alt="Installing progress screen" loading="lazy" width="300" height="186">
+          </div>
+          <div class="install-body">
+            <div class="install-step">Step 03</div>
+            <h3>Open MAPMIT</h3>
+            <p>Wait for installation to complete, then tap Open to launch the app.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section id="download-section" class="section">
+    <div class="section-inner">
+      <div class="download-box">
+        <div>
+          <h3>Download MapMIT for Android</h3>
+          <p>Free to download and install. Works on any Android phone.</p>
+          <div class="apk-meta">
+            <span>Version 1.0.0</span>
+            <span>~45 MB</span>
+            <span>Android 7.0+</span>
+            <span>Updated Jul 2025</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <a href="https://github.com/archAdityaM/MAPMIT/releases/download/v1.0.0/MAP_MIT.apk" target="_blank"
+            rel="noopener noreferrer" class="btn btn-solid btn-xl" aria-label="Download MapMIT APK file">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download APK
+          </a>
+          <span class="badge-coming-soon" aria-label="iOS version coming soon" aria-disabled="true">iOS Coming
+            Soon</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <span>© 2025 Varise · MapMIT v0.1.0</span>
+    <span>Manipal Institute of Technology</span>
+  </footer>
+
+
+</body>
+
+</html>
